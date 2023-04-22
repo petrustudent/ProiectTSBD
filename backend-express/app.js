@@ -365,6 +365,60 @@ app.get("/loc", (req, res) => {
     //get query param ?id
     cerere3(req, res);
   });
+
+
+  async function cerere4(req, res) {
+    let connection;
+    let result;
+    try {
+      connection = await oracledb.getConnection({
+        user: "dw",
+        password: "dw",
+        connectString: "localhost:1521/datawproiect.docker.internal",
+      });
+      // run query to get employee with employee_id
+      result = await connection.execute(
+        `SELECT
+        tip_calator,
+        ROUND(AVG(to_date(concat(concat(to_char(tp_plecare.zi, 'fm00'), to_char(tp_plecare.luna, 'fm00')), to_char(tp_plecare.an)), 'ddMMYYYY'
+        ) - to_date(concat(concat(to_char(tp_cumparare.zi, 'fm00'), to_char(tp_cumparare.luna, 'fm00')), to_char(tp_cumparare.an)), 'ddMMYYYY'
+        )),2) AS zile_diferenta
+    FROM
+        bilete_vandute   bv
+        INNER JOIN calator          c ON c.id_calator = bv.id_calator
+        INNER JOIN timp             tp_plecare ON tp_plecare.id_timp = bv.id_timp_plecare
+        INNER JOIN timp             tp_cumparare ON tp_cumparare.id_timp = bv.id_timp_cumparare
+    GROUP BY
+        c.tip_calator
+        `
+      );
+    } catch (err) {
+      //send error message
+      return res.send(err.message);
+    } finally {
+      if (connection) {
+        try {
+          // Always close connections
+          await connection.close();
+        } catch (err) {
+          return console.error(err.message);
+        }
+      }
+      console.log(result);
+      if (result.rows.length == 0) {
+        //query return zero employees
+        return res.send("query send no rows");
+      } else {
+        //send all employees
+        return res.send(result.rows);
+      }
+    }
+  }
+
+  app.get("/cerere4", (req, res) => {
+    //get query param ?id
+    cerere4(req, res);
+  });
   
 
 
