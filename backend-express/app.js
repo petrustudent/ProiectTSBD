@@ -200,6 +200,47 @@ app.get("/loc", (req, res) => {
     selectLocByTraseu(req, res, id_traseu, data);
   });
 
+  async function cerere1(req, res) {
+    let connection;
+    let result;
+    try {
+      connection = await oracledb.getConnection({
+        user: "dw",
+        password: "dw",
+        connectString: "localhost:1521/datawproiect.docker.internal",
+      });
+      // run query to get employee with employee_id
+      result = await connection.execute(
+        `SELECT denumire_gara_sosire AS destinatie, luna, bilete_vandute FROM ( SELECT tr.denumire_gara_sosire, tp.luna, SUM(cantitate) AS bilete_vandute, MAX(SUM(cantitate)) OVER( PARTITION BY tp.luna ) AS max_val FROM bilete_vandute bv, traseu tr, timp tp WHERE bv.id_traseu = tr.id_traseu AND bv.id_timp_plecare = tp.id_timp AND tp.an = 2022 GROUP BY tr.denumire_gara_sosire, tp.luna ) WHERE bilete_vandute = max_val`
+      );
+    } catch (err) {
+      //send error message
+      return res.send(err.message);
+    } finally {
+      if (connection) {
+        try {
+          // Always close connections
+          await connection.close();
+        } catch (err) {
+          return console.error(err.message);
+        }
+      }
+      console.log(result);
+      if (result.rows.length == 0) {
+        //query return zero employees
+        return res.send("query send no rows");
+      } else {
+        //send all employees
+        return res.send(result.rows);
+      }
+    }
+  }
+
+  app.get("/cerere1", (req, res) => {
+    //get query param ?id
+    cerere1(req, res);
+  });
+
 
 const app = express();
 app.use(cors());
