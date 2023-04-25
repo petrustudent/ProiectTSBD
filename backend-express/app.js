@@ -242,6 +242,70 @@ app.get("/loc", (req, res) => {
   });
 
 
+  async function cerere2(req, res) {
+    let connection;
+    let result;
+    try {
+      connection = await oracledb.getConnection({
+        user: "dw",
+        password: "dw",
+        connectString: "localhost:1521/datawproiect.docker.internal",
+      });
+      // run query to get employee with employee_id
+      result = await connection.execute(
+        `SELECT
+        c.tip_calator,
+        SUM(bv.cantitate) bilete_cumparate,
+        SUM(SUM(bv.cantitate)) OVER() AS total_vanz,
+        round(RATIO_TO_REPORT(SUM(bv.cantitate)) OVER(), 6) AS ratio_rep
+    FROM
+        calator          c,
+        bilete_vandute   bv,
+        timp             tp
+    WHERE
+        c.id_calator = bv.id_calator
+        AND bv.id_timp_plecare = tp.id_timp
+        AND ( tp.an = 2022
+              OR tp.an = 2021
+              OR tp.an = 2020 )
+        AND ( ( tp.luna = 9
+                AND tp.zi >= 25 )
+              OR ( tp.luna = 10
+                   AND tp.zi <= 5 ) )
+    GROUP BY
+        c.tip_calator
+        `
+      );
+    } catch (err) {
+      //send error message
+      return res.send(err.message);
+    } finally {
+      if (connection) {
+        try {
+          // Always close connections
+          await connection.close();
+        } catch (err) {
+          return console.error(err.message);
+        }
+      }
+      console.log(result);
+      if (result.rows.length == 0) {
+        //query return zero employees
+        return res.send("query send no rows");
+      } else {
+        //send all employees
+        return res.send(result.rows);
+      }
+    }
+  }
+
+  app.get("/cerere2", (req, res) => {
+    //get query param ?id
+    cerere2(req, res);
+  });
+  
+
+
 const app = express();
 app.use(cors());
 
