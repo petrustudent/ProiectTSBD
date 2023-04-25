@@ -303,6 +303,68 @@ app.get("/loc", (req, res) => {
     //get query param ?id
     cerere2(req, res);
   });
+
+
+  async function cerere3(req, res) {
+    let connection;
+    let result;
+    try {
+      connection = await oracledb.getConnection({
+        user: "dw",
+        password: "dw",
+        connectString: "localhost:1521/datawproiect.docker.internal",
+      });
+      // run query to get employee with employee_id
+      result = await connection.execute(
+        `SELECT
+        g.denumire,
+        SUM(bv.cantitate) bilete_vandute,
+        SUM(bv.pret_total) AS pret_total,
+        DENSE_RANK() OVER(
+            ORDER BY
+                SUM(bv.cantitate) DESC, SUM(bv.pret_total) DESC
+        ) desc_rank
+    FROM
+        bilete_vandute   bv
+        INNER JOIN calator          c ON bv.id_calator = bv.id_calator
+        INNER JOIN gara             g ON bv.id_gara_vanzare = g.id_gara
+        INNER JOIN timp             t ON bv.id_timp_cumparare = t.id_timp
+    WHERE
+        c.tip_calator = 'student'
+        AND t.an = 2022
+    GROUP BY
+        g.denumire
+    ORDER BY
+        bilete_vandute DESC
+        `
+      );
+    } catch (err) {
+      //send error message
+      return res.send(err.message);
+    } finally {
+      if (connection) {
+        try {
+          // Always close connections
+          await connection.close();
+        } catch (err) {
+          return console.error(err.message);
+        }
+      }
+      console.log(result);
+      if (result.rows.length == 0) {
+        //query return zero employees
+        return res.send("query send no rows");
+      } else {
+        //send all employees
+        return res.send(result.rows);
+      }
+    }
+  }
+
+  app.get("/cerere3", (req, res) => {
+    //get query param ?id
+    cerere3(req, res);
+  });
   
 
 
